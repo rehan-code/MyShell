@@ -10,21 +10,18 @@ char **strtoarray(char *line) {
     int i;
     char **array = malloc(sizeof(char*)*500);
     char *word = strtok(line, " \n");
-    //printf("%s\n", word);
     
     for (i = 0; word!=NULL; i++) {
         array[i] = word;
         word = strtok(NULL, " \n");
-        printf("%s\n", word);
     }
     array[i] = NULL;
-
     return array;
 }
 
 int main(int argc, char **argv) {
     int exitcmd = 0;
-    char cmdLine[1000];
+    char cmdLine[1000], cmdLineTokens[1000];
     char *cmdLnArg;
     char *cmdLnArg2;
     pid_t pid;
@@ -45,8 +42,9 @@ int main(int argc, char **argv) {
 
         } else {//if valid no. of arguments, run rest of teh program
             cmdLine[strlen(cmdLine)-1] = '\0';//remove the \n character
-            cmdLnArg = strtok(cmdLine, " ");//get the first arg from the argline
+            strcpy(cmdLineTokens, cmdLine);
 
+            cmdLnArg = strtok(cmdLineTokens, " ");//get the first arg from the argline
             if (strcmp(cmdLnArg, "exit")==0) { //user enters the exit command
                 exitcmd = 1;
                 printf("myShell terminating...\n\n");
@@ -57,11 +55,7 @@ int main(int argc, char **argv) {
                 if(pid >= 0) {
                     if (pid == 0) {//child process
                         array = strtoarray(cmdLine);
-                        printf("test\n");
-                        status = execvp("ls", test);
-                        printf("test\n");
-                        
-                        
+                        status = execvp("ls", array);
                         free(array);
                         exit(status);
                     } else if(pid > 0) {//parent process
