@@ -7,6 +7,15 @@
 #include <string.h>      /* String Library */
 #include <signal.h>      /* Signal Library */
 
+
+/**Student Name: Rehan Nagoor Mohideen
+ * Student ID: 1100592
+ */
+
+/**
+ * Tokenizes the string to make an array with all the words seperated by spaces
+ * @return a array of words from the original string
+ */
 char **strtoarray(char *line) {
     int i;
     char **array = malloc(sizeof(char*)*500);
@@ -20,11 +29,17 @@ char **strtoarray(char *line) {
     return array;
 }
 
+/**
+ * handler for quit
+ */
 void sigquit(int signo) {
-    printf(">");
+    printf("testsetstste");
     exit(0);
 }
 
+/**
+ * Function handles the execution of the output handling
+ */
 void redOutProcess(char **cmdline, int i) {
     int status;
     
@@ -52,6 +67,9 @@ void redOutProcess(char **cmdline, int i) {
     }
 }
 
+/**
+ * Function handle the execution of the input redirection
+ */
 void redInpProcess(char **cmdline, int i) {
     int status;
     
@@ -79,6 +97,9 @@ void redInpProcess(char **cmdline, int i) {
     }
 }
 
+/**
+ * Function handles the execution of the pipe commands
+ */
 void pipeProcess(char **cmdline, int i) {
     int status, status2;
     int pipefd[2];
@@ -91,7 +112,7 @@ void pipeProcess(char **cmdline, int i) {
     pid_t pid = fork();
     if(pid >= 0) {//if valid
         if (pid == 0) {//child runs write process
-            dup2(pipefd[1],STDOUT_FILENO);
+            dup2(pipefd[1], STDOUT_FILENO);
             close(pipefd[0]);
             //execvp and close
             cmdline[i] = NULL;
@@ -106,15 +127,27 @@ void pipeProcess(char **cmdline, int i) {
                     dup2(pipefd[0],STDIN_FILENO);
                     close(pipefd[1]);
                     //make new array for the execvp
-                    int j;
-                    char **newArray = malloc(sizeof(char*)*20);
-                    for (j = i; cmdline[j] != NULL; j++) {
-                        strcpy(newArray[j-i],cmdline[j]);
+                    int j, k, nol;
+                    for (nol = i; cmdline[nol] != NULL; nol++) {
                     }
-                    newArray[j] = NULL;
+                    nol = nol - i;//find the nol to malloc
+                    
+                    char **newArray = malloc(sizeof(char*)*nol);//mollac that many array element
+                    for (k = 0; k < nol-1; k++) {//malloc each element except last since it will be null
+                        newArray[k] = malloc(1000);
+                    }
+                    k=i+1;
+                    for (j = k; cmdline[j] != NULL; j++) {
+                        strcpy(newArray[j-k], cmdline[j]);//copy each elements from the other side of the pipe to the new array
+                    }
+                    //printf("%s %s\n\n", newArray[0], newArray[1]);
+                    newArray[j] = NULL;//make last array element null
                     //execvp and close
                     status = execvp(newArray[0], newArray);
                     close(pipefd[0]);
+                    for (k = 0; k < nol-1; k++) {
+                        free(newArray[k]);
+                    }
                     free(newArray);
                     exit(status);
                 } else if(pid2 > 0) {//parent process
@@ -128,6 +161,8 @@ void pipeProcess(char **cmdline, int i) {
                     if (WEXITSTATUS(status2) == -1){//if it did not run successfully print error msg
                         perror(cmdline[i+1]);
                     }
+                    //printf("test3\n");
+
                 }
             } else {
                 close(pipefd[1]);
@@ -142,6 +177,9 @@ void pipeProcess(char **cmdline, int i) {
     }
 }
 
+/**
+ * function runs the profile commands form the CIS3110_profile file
+ */
 void runProfileCmds(FILE *profilefileptr,char *path, char *histfile, char *home) {
     char cmdline[1000], temp[1000];
     char *cmdLnArg, *cmdLnArg2, *substring;
@@ -197,7 +235,10 @@ void runProfileCmds(FILE *profilefileptr,char *path, char *histfile, char *home)
     }
 }
 
-
+/**
+ * main program
+ * @return 0 on completion
+ */
 int main(int argc, char **argv) {
     int exitcmd = 0;
     char cmdLine[1000], cmdLineTokens[1000], cmdLineTokens2[1000], histline[1000], cwd[1000], temp[1000];
@@ -206,10 +247,12 @@ int main(int argc, char **argv) {
     char *cmdLnArg2;
     pid_t pid;
     pid_t asynchpid;
+    //pid_t asynchpid2;
     char **array;
     int status, i;
     int stploop = 0;
     int histLnNo = 0;
+    int asynchPNo = 0;
     char c;
 
     //set and intialize environment variables
@@ -268,7 +311,7 @@ int main(int argc, char **argv) {
             }
             printf("myShell: too many characters\n");
 
-        } else {//if valid no. of arguments, run rest of the program
+        } else if (strcmp(cmdLine, "\n")!=0) {//if valid no. of arguments, run rest of the program
             //add new command to the history file
             fseek(histfileptr, 0, SEEK_END);
             fprintf(histfileptr, " %d  %s", ++histLnNo, cmdLine);
@@ -280,8 +323,42 @@ int main(int argc, char **argv) {
             cmdLnArg2 = strtok(NULL, " \t");
             strcpy(cmdLineTokens2, cmdLine);
 
-            
-
+            //replace the environment variables with the values for arg2
+            if (cmdLnArg2 != NULL) {
+                strcpy(temp,cmdLnArg2);
+                if ((substring = strstr(cmdLnArg2, "$PATH")) != NULL) {
+                    strcpy(temp, cmdLnArg2);//copied original line
+                    //removes everything from $ onwards eg $PATH and onwards
+                    for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
+                        temp[i]='\0';
+                    }
+                    strcat(temp, path);//add full path to the end
+                    if (strlen(substring)-5 != 0) {//if the substring contains more than just $PATH
+                        strcat(temp, substring+5);//then append it to the end
+                    }
+                    strcpy(cmdLnArg2, temp);
+                } else if ((substring = strstr(cmdLnArg2, "$HOME")) != NULL) {
+                    strcpy(temp, cmdLnArg2);
+                    for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
+                        temp[i]='\0';
+                    }
+                    strcat(temp, home);
+                    if (strlen(substring)-5 != 0) {
+                        strcat(temp, substring + 5);
+                    }
+                    strcpy(cmdLnArg2, temp);
+                } else if ((substring = strstr(cmdLnArg2, "$HISTFILE")) != NULL) {
+                    strcpy(temp, cmdLnArg2);
+                    for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
+                        temp[i]='\0';
+                    }
+                    strcat(temp, histfile);
+                    if (strlen(substring)-9 != 0) {
+                        strcat(temp, substring+9);
+                    }
+                    strcpy(cmdLnArg2, temp);
+                }
+            }
 
             //To run redirection pipe commands
             array = strtoarray(cmdLineTokens2);
@@ -309,37 +386,40 @@ int main(int argc, char **argv) {
                     free(histfile);
                     free(home);
                     fclose(histfileptr);
+                    sigact.sa_handler = SIG_DFL;
+                    sigaction(SIGQUIT, &sigact, NULL);
                     kill(asynchpid,SIGQUIT);
+                    //kill(asynchpid2,SIGQUIT);
+                    printf("[Process completed]\n");
 
                 } else if (cmdLine[strlen(cmdLine)-1] == '&') {//asynchronous command
                     if ((asynchpid = fork()) < 0) {//if fork error
                         perror("fork");
                     } else {//if fork was successfull
+                        cmdLine[strlen(cmdLine)-1] = '\0';//remove & to get the valid array
                         if (asynchpid == 0) {//child runs process
-                            cmdLine[strlen(cmdLine)-1] = '\0';//remove & to get the valid array
                             array = strtoarray(cmdLine);//get array for execvp
                             status = execvp(cmdLnArg, array);//execute command
-                            if (status == -1) {//if failed to execute command
-                                perror(cmdLnArg);
-                            }
-                            printf("> ");
+                            perror(cmdLnArg);
+                            printf("%s> ", cwd);
                         
                             free(array);
                             exit(status);
                         } else {//parent process
+                            printf("[%d] %d\n", ++asynchPNo, pid);
                             sigact.sa_handler = SIG_DFL;
                             sigaction(SIGQUIT, &sigact, NULL);
                         }
                     }
 
                 //the 3 echo options for path, histfile and home
-                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, "$PATH")==0) {
+                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, path)==0) {
                     printf("%s\n", path);
 
-                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, "$HISTFILE")==0) {
+                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, histfile)==0) {
                     printf("%s\n", histfile);
 
-                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, "$HOME")==0) {
+                }else if (strcmp(cmdLnArg, "echo")==0 && strcmp(cmdLnArg2, home)==0) {
                     printf("%s\n", home);
 
                 }else if (strcmp(cmdLnArg, "history")==0) {//history command
@@ -373,34 +453,6 @@ int main(int argc, char **argv) {
                     }
 
                 }else if (strcmp(cmdLnArg, "export")==0) {
-                    //replace the environment variables with the values
-                    strcpy(temp,cmdLnArg2);
-                    if ((substring = strstr(cmdLnArg2, "$PATH")) != NULL) {
-                        strcpy(temp, cmdLnArg2);
-                        for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
-                            temp[i]='\0';
-                        }
-                        strcat(temp, path);
-                        strcat(temp, substring+5);
-                        strcpy(cmdLnArg2, temp);
-                    } else if ((substring = strstr(cmdLnArg2, "$HOME")) != NULL) {
-                        strcpy(temp, cmdLnArg2);
-                        for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
-                            temp[i]='\0';
-                        }
-                        strcat(temp, home);
-                        strcat(temp, substring+5);
-                        strcpy(cmdLnArg2, temp);
-                    } else if ((substring = strstr(cmdLnArg2, "$HISTFILE")) != NULL) {
-                        strcpy(temp, cmdLnArg2);
-                        for (i = (strlen(cmdLnArg2)-strlen(substring)); i < 1000; i++) {
-                            temp[i]='\0';
-                        }
-                        strcat(temp, histfile);
-                        strcat(temp, substring+9);
-                        strcpy(cmdLnArg2, temp);
-                    }
-
                     //print the env variable values
                     if (strncmp(cmdLnArg2, "PATH=", 5)==0) {
                         strcpy(path, cmdLnArg2+5);
@@ -418,15 +470,18 @@ int main(int argc, char **argv) {
                     }
 
                 } else {//execute a command
+                    
                     pid = fork();
                     if(pid >= 0) {//if valid
+                        array = strtoarray(cmdLine);
                         if (pid == 0) {//child runs process
-                            array = strtoarray(cmdLine);
                             status = execvp(array[0], array);
-                            free(array);
-                            exit(status);
+                            perror(cmdLine);
+
+                            exit(-1);
                         } else {//parent process
                             waitpid(pid, &status, 0);
+                            free(array);
                             if (WEXITSTATUS(status) == -1){//if it did not run successfully print error msg
                                 perror(cmdLine);
                             }
