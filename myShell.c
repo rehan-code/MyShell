@@ -247,7 +247,7 @@ int main(int argc, char **argv) {
     char *cmdLnArg2;
     pid_t pid;
     pid_t asynchpid;
-    //pid_t asynchpid2;
+    pid_t asynchpid2;
     char **array;
     int status, i;
     int stploop = 0;
@@ -392,23 +392,58 @@ int main(int argc, char **argv) {
                     //kill(asynchpid2,SIGQUIT);
                     printf("[Process completed]\n");
 
+                // UNCOMMENT FOR VERSION THAT DOESNT CREATE A ZOMBIE ON EXIT WHILE RUNNING
+                // } else if (cmdLine[strlen(cmdLine)-1] == '&') {//asynchronous command
+                //     if ((asynchpid = fork()) < 0) {//if fork error
+                //         perror("fork");
+                //     } else {//if fork was successfull
+                //         cmdLine[strlen(cmdLine)-1] = '\0';//remove & to get the valid array
+                //         if (asynchpid == 0) {//child runs process
+                //             array = strtoarray(cmdLine);//get array for execvp
+                //             status = execvp(cmdLnArg, array);//execute command
+                //             perror(cmdLnArg);
+                //             printf("%s> ", cwd);
+                        
+                //             free(array);
+                //             exit(status);
+                //         } else {//parent process
+                //             printf("[%d] %d\n", ++asynchPNo, pid);
+                //             sigact.sa_handler = SIG_DFL;
+                //             sigaction(SIGQUIT, &sigact, NULL);
+                //         }
+                //     }
+
+                
                 } else if (cmdLine[strlen(cmdLine)-1] == '&') {//asynchronous command
+                    asynchPNo++;
                     if ((asynchpid = fork()) < 0) {//if fork error
                         perror("fork");
                     } else {//if fork was successfull
                         cmdLine[strlen(cmdLine)-1] = '\0';//remove & to get the valid array
+                        strcpy(temp, "-myShell: ");
+                        strcat(temp, cmdLine);
+
                         if (asynchpid == 0) {//child runs process
-                            array = strtoarray(cmdLine);//get array for execvp
-                            status = execvp(cmdLnArg, array);//execute command
-                            perror(cmdLnArg);
+                            if ((asynchpid2 = fork()) < 0) {//child created
+                                perror("fork");
+                            } else {//if fork was successfull
+                                if (asynchpid2 == 0) {//second child executes the instruction
+                                    array = strtoarray(cmdLine);//get array for execvp
+                                    status = execvp(cmdLnArg, array);//execute command
+                                    perror(temp);
+                                    printf("%s> ", cwd);
+                                
+                                    free(array);
+                                    exit(status);
+                                }
+                            }//2nd childs parent waits for process completion to print the output
+                            waitpid(asynchpid, &status, 0);
+                            printf("\n[%d]+ Done          %s\n", asynchPNo, cmdLine);
                             printf("%s> ", cwd);
-                        
-                            free(array);
-                            exit(status);
+                            exit(asynchpid2);
+
                         } else {//parent process
-                            printf("[%d] %d\n", ++asynchPNo, pid);
-                            sigact.sa_handler = SIG_DFL;
-                            sigaction(SIGQUIT, &sigact, NULL);
+                            printf("[%d] %d\n", asynchPNo, pid);
                         }
                     }
 
