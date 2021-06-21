@@ -9,5 +9,11 @@ myShell.o: myShell.c
 myShell: myShell.o
 	$(CC) $(CFLAGS) -o myShell myShell.o
 
+bgSleep.o: bgSleep.c
+	$(CC) $(CFLAGS) -c bgSleep.c -o bgSleep.o
+
+bgSleep: bgSleep.o
+	$(CC) $(CFLAGS) -o bgSleep bgSleep.o
+
 clean:
-	rm *.o myShell
+	rm *.o myShell bgSleep
